@@ -110,8 +110,8 @@ class GoveeBluetoothLight(LightEntity):
 
         if ATTR_BRIGHTNESS in kwargs:
             brightness = kwargs.get(ATTR_BRIGHTNESS, 255)
-            # H6008 brightness found via https://github.com/hardcpp/GoveeBleMqttServer.git
-            if self._model == "H6008":
+            # brightness found via https://github.com/hardcpp/GoveeBleMqttServer.git
+            if self._model == "H6008" or self._model == "H6072":
                 brightness = kwargs.get(int(ATTR_BRIGHTNESS * 100), 100)
             # ///////////////////////////////////////////////////////////////////////////
             commands.append(self._prepareSinglePacketData(LedCommand.BRIGHTNESS, [brightness]))
@@ -122,7 +122,7 @@ class GoveeBluetoothLight(LightEntity):
 
             # H6008 ledmode found via https://github.com/hardcpp/GoveeBleMqttServer.git
             led_mode = LedMode.MANUAL
-            if self._model == "H6008":
+            if self._model == "H6008" or self._model == "H6072":
                 led_mode = LedMode.MANUAL2
             # ////////////////////////////////
                 
