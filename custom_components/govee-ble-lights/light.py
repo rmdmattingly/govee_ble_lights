@@ -9,8 +9,14 @@ import bleak_retry_connector
 
 from bleak import BleakClient
 from homeassistant.components import bluetooth
-from homeassistant.components.light import (ATTR_BRIGHTNESS, ATTR_RGB_COLOR, ATTR_EFFECT, ColorMode, LightEntity,
-                                            LightEntityFeature)
+from homeassistant.components.light import (
+    ATTR_BRIGHTNESS, 
+    ATTR_RGB_COLOR, 
+    ATTR_RGBWW_COLOR, 
+    ATTR_EFFECT, 
+    ColorMode, 
+    LightEntity,
+    LightEntityFeature)
 
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
@@ -43,6 +49,7 @@ class LedMode(IntEnum):
     MANUAL = 0x02
     MICROPHONE = 0x06
     SCENES = 0x05
+    MANUAL2 = 0x0D
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
@@ -86,7 +93,7 @@ class GoveeBluetoothLight(LightEntity):
     @property
     def name(self) -> str:
         """Return the name of the switch."""
-        return "GOVEE Light"
+        return self._model + "-" + self._mac.replace(":", "")[-6:]#"GOVEE Light"
 
     @property
     def unique_id(self) -> str:
@@ -109,12 +116,39 @@ class GoveeBluetoothLight(LightEntity):
 
         if ATTR_BRIGHTNESS in kwargs:
             brightness = kwargs.get(ATTR_BRIGHTNESS, 255)
+            # brightness found via https://github.com/hardcpp/GoveeBleMqttServer.git
+            if self._model == "H6008":
+                brightness = kwargs.get(int(ATTR_BRIGHTNESS * 100), 100)
+            # ///////////////////////////////////////////////////////////////////////////
             commands.append(self._prepareSinglePacketData(LedCommand.BRIGHTNESS, [brightness]))
             self._brightness = brightness
 
         if ATTR_RGB_COLOR in kwargs:
             red, green, blue = kwargs.get(ATTR_RGB_COLOR)
-            commands.append(self._prepareSinglePacketData(LedCommand.COLOR, [LedMode.MANUAL, red, green, blue]))
+
+            # H6008 ledmode found via https://github.com/hardcpp/GoveeBleMqttServer.git
+            led_mode = LedMode.MANUAL
+            if self._model == "H6008":
+                led_mode = LedMode.MANUAL2
+
+            # ////////////////////////////////
+            if self._model == "H6072":
+                commands.append(self._prepareSinglePacketData(LedCommand.COLOR, [
+                    0x15,
+                    0x01, 
+                    red, 
+                    green, 
+                    blue,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0xFF,
+                    0x74,
+                    ]))
+            else:
+                commands.append(self._prepareSinglePacketData(LedCommand.COLOR, [led_mode, red, green, blue]))
 
         if ATTR_EFFECT in kwargs:
             effect = kwargs.get(ATTR_EFFECT)
